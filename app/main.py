@@ -247,7 +247,7 @@ async def query_rag(request: QueryRequest):
         session_id = request.session_id or str(uuid.uuid4())
 
         # Ignite the LangGraph State Machine
-        final_state = services["workflow"].run(request.question, session_id, request.search_mode)
+        final_state = services["workflow"].run(request.question, session_id, request.search_mode, request.doc_id)
 
         # Format and return response
         context_chunks = final_state["retrieved_context"]

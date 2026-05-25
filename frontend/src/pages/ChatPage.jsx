@@ -61,7 +61,7 @@ export default function ChatPage() {
 
     const t = Date.now();
     try {
-      const res = await api.query(question, sessionId, strategyMode);
+      const res = await api.query(question, sessionId, strategyMode, activeDocId);
       const elapsed = Date.now() - t;
       
       updateAnalytics({

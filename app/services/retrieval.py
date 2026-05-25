@@ -11,13 +11,23 @@ class RetrievalService:
         # Create an index object that LlamaIndex can query against
         self.index = VectorStoreIndex.from_vector_store(vector_store=self.vector_store)
 
-    def retrieve_hybrid(self, query: str, top_k: int = 5) -> List[ChunkSchema]:
+    def retrieve_hybrid(self, query: str, top_k: int = 5, doc_id: str = None) -> List[ChunkSchema]:
         """
         Dense vector retrieval using BAAI/bge-small-en-v1.5 embeddings.
         Fast and accurate for CPU-bound environments.
         """
+        filters = None
+        if doc_id:
+            from llama_index.core.vector_stores.types import MetadataFilters, ExactMatchFilter
+            filters = MetadataFilters(
+                filters=[
+                    ExactMatchFilter(key="doc_id", value=doc_id)
+                ]
+            )
+
         retriever = self.index.as_retriever(
             similarity_top_k=top_k,
+            filters=filters,
         )
         
         # Retrieve the most relevant nodes

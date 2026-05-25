@@ -65,6 +65,8 @@ class QueryRequest(BaseModel):
     mode: SearchMode = SearchMode.HYBRID
     top_k: int = 5
     search_mode: str = "quick" # "quick" (Flash) or "deep" (Pro)
+    doc_id: Optional[str] = None
+
 
 class AgentThought(BaseModel):
     """Used for SSE streaming to show the user what the AI is doing."""

@@ -32,7 +32,7 @@ export const api = {
     return res.json();
   },
 
-  async query(question, sessionId, searchMode = 'quick') {
+  async query(question, sessionId, searchMode = 'quick', docId = null) {
     const backendMode = searchMode === 'fast' || searchMode === 'quick' ? 'quick' : 'deep';
     const res = await fetch(`${BASE_URL}/query`, {
       method: 'POST',
@@ -40,7 +40,8 @@ export const api = {
       body: JSON.stringify({ 
         question, 
         session_id: sessionId,
-        search_mode: backendMode 
+        search_mode: backendMode,
+        doc_id: docId
       }),
     });
     if (!res.ok) {

@@ -36,7 +36,11 @@ class AgentNodes:
         search_mode = state.get("search_mode", "quick")
         # Flash Mode retrieves top_k=3, Pro Mode retrieves top_k=8
         top_k = 3 if search_mode == "quick" else 8
-        chunks = self.retrieval.retrieve_hybrid(query=state["rewritten_query"], top_k=top_k)
+        chunks = self.retrieval.retrieve_hybrid(
+            query=state["rewritten_query"], 
+            top_k=top_k,
+            doc_id=state.get("doc_id")
+        )
         
         # Deduplicate and accumulate chunks across loop attempts
         existing_chunks = state.get("retrieved_context") or []

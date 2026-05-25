@@ -1,4 +1,4 @@
-from typing import List, TypedDict
+from typing import List, TypedDict, Optional
 from app.models.schemas import ChunkSchema
 
 class AgentState(TypedDict):
@@ -14,3 +14,6 @@ class AgentState(TypedDict):
     is_relevant: bool
     final_answer: str
     attempt_count: int
+    doc_id: Optional[str]
+    search_mode: Optional[str]
+

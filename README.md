@@ -6,49 +6,71 @@
 
 ## 📌 Table of Contents
 
-1. [Introduction: The Problem & The Solution](#1-introduction-the-problem--the-solution)
-   - [The Problem (Why Naive RAG Fails in Production)](#the-problem-why-naive-rag-fails-in-production)
-   - [The Engineered Solution (Enter A.R.C.H.E.R.)](#the-engineered-solution-enter-archer)
-2. [Dual-Mode Cognitive Strategies (Flash Mode ⚡ vs. Pro Mode 🧠)](#2-dual-mode-cognitive-strategies-flash-mode--vs-pro-mode-)
-3. [Multi-Agent Core & LangGraph Architecture](#3-multi-agent-core--langgraph-architecture)
+1. [Detailed Problem Statement (The 3 Dimensions of RAG Failures)](#1-detailed-problem-statement-the-3-dimensions-of-rag-failures)
+   - [Dimension 1: Technical & Mathematical Failure (Data Representation)](#dimension-1-technical--mathematical-failure-data-representation)
+   - [Dimension 2: Architectural & Systemic Failure (Static Pipelines)](#dimension-2-architectural--systemic-failure-static-pipelines)
+   - [Dimension 3: Business, UX & Operational Failure (Production Realities)](#dimension-3-business-ux--operational-failure-production-realities)
+2. [The Engineered Solution (The A.R.C.H.E.R. Framework)](#2-the-engineered-solution-the-archer-framework)
+3. [Dual-Mode Cognitive Strategies (Flash Mode ⚡ vs. Pro Mode 🧠)](#3-dual-mode-cognitive-strategies-flash-mode--vs-pro-mode-)
+4. [Multi-Agent Core & LangGraph Architecture](#4-multi-agent-core--langgraph-architecture)
    - [LangGraph Workflow Diagram](#langgraph-workflow-diagram)
    - [Agent Specifications](#agent-specifications)
-4. [Depth Breakdown: The End-to-End RAG Pipeline](#4-depth-breakdown-the-end-to-end-rag-pipeline)
+5. [Depth Breakdown: The End-to-End RAG Pipeline](#5-depth-breakdown-the-end-to-end-rag-pipeline)
    - [Stage 1: High-Precision Page-Bounded Ingestion](#stage-1-high-precision-page-bounded-ingestion)
    - [Stage 2: Hybrid Dense-Sparse Vector Indexing](#stage-2-hybrid-dense-sparse-vector-indexing)
    - [Stage 3: Multi-Agent Query Processing & Relevance Grading](#stage-3-multi-agent-query-processing--relevance-grading)
-   - [Stage 4: Cognitive Generation & Hallucination Checking](#stage-4-cognitive-generation-and-hallucination-checking)
+   - [Stage 4: Cognitive Generation & Fact-Checking](#stage-4-cognitive-generation--fact-checking)
    - [Stage 5: High-Performance Service Connectivity Pool](#stage-5-high-performance-service-connectivity-pool)
-5. [API Key Configuration, Key Pool Rotation & Latency Profiles](#5-api-key-configuration-key-pool-rotation--latency-profiles)
-6. [Trade-offs, Benefits & Disadvantages](#6-trade-offs-benefits--disadvantages)
-7. [Project Directory & File Structure](#7-project-directory--file-structure)
-8. [API Reference](#8-api-reference)
-9. [Setup & Installation Guide](#9-setup--installation-guide)
+6. [API Key Configuration, Key Pool Rotation & Latency Profiles](#6-api-key-configuration-key-pool-rotation--latency-profiles)
+7. [Trade-offs, Benefits & Disadvantages](#7-trade-offs-benefits--disadvantages)
+8. [Project Directory & File Structure](#8-project-directory--file-structure)
+9. [API Reference](#9-api-reference)
+10. [Setup & Installation Guide](#10-setup--installation-guide)
 
 ---
 
-## 1. Introduction: The Problem & The Solution
+## 1. Detailed Problem Statement (The 3 Dimensions of RAG Failures)
 
-### The Problem (Why Naive RAG Fails in Production)
-Standard "naive" Retrieval-Augmented Generation (RAG) pipelines follow a simple pattern: extract text, chunk it by a fixed character count (e.g., every 500 characters), embed those chunks using a basic embedding model, retrieve the top-$K$ chunks based on vector distance, and pass them to an LLM.
+When building question-answering systems over unstructured documents, standard "naive" RAG systems (which rely on simple character splitting, flat vector databases, and direct LLM calls) consistently fail. We break down these failures into three distinct dimensions:
 
-In real-world enterprise environments, this approach fails due to several key factors:
-1. **Context Fragmentation & Sentence Mutilation:** Naive character-based splitting chops sentences in half, separating critical nouns from their modifying clauses, verbs, or statistical context.
-2. **Diluted Retrieval (Bi-Encoder Limits):** Standard dense vector search (Bi-Encoders) is fast, but maps entire sentences/passages into a single vector space, often missing deep keyword-level overlaps or specific numeric metrics.
-3. **The "Lost in the Middle" Syndrome:** Giving too much context (e.g., top-10 chunks) to an LLM degrades reasoning. The LLM tends to ignore the middle chunks, focusing only on the beginning or end of the context block.
-4. **Factual Hallucinations:** Standard LLMs will aggressively hallucinate answers or blend out-of-context training data when the retrieved documents do not contain the answer, pretending the answer was in the document.
-5. **Rate-Limiting & High Chained Latency:** Sequential multi-agent calls (Query Rewriting, Relevance Checking, Generation, Fact-Checking) multiply latencies, easily leading to API rate-limit errors and slow UI responses.
+### Dimension 1: Technical & Mathematical Failure (Data Representation)
+At the raw data and embedding level, naive systems degrade the information density of document contexts:
+* **Sentence Mutilation via Naive Chunking:** Splitting documents strictly by character limits (e.g., every 500 characters) cuts text mid-sentence or mid-formula. For example, splitting the sentence *"Company X's revenue grew by 25% due to the acquisition of Company Y, whereas operational cost rose by 40%."* exactly at *"acquisition of"* separates the core cause from the outcome. The vector database gets fragmented contexts, resulting in mathematically distinct embeddings that fail to match the query.
+* **Loss of Table Structure & Key-Value Semantics:** Data stored in tables or key-value reports relies heavily on layout structure. When converted to raw text, column boundaries are lost. Without explicit structural parsing, standard dense embedding models map tabular rows to vectors that represent meaningless sequences of words and numbers.
+* **The Limitations of Cosine Similarity on Dense Embeddings (Bi-Encoder Deficit):** Dense embedding models (Bi-Encoders like `all-MiniLM-L6-v2`) encode queries and passages independently into a shared vector space, calculating relevance using cosine similarity:
+  $$\text{Similarity} = \cos(\theta) = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}$$
+  This compressional mapping struggles with exact keyword matching, serial numbers, product codes, or specific jargon, as the model prioritizes general semantic similarity over exact term alignment.
 
-### The Engineered Solution (Enter A.R.C.H.E.R.)
-A.R.C.H.E.R. (Autonomous Retrieval & Contextual Hybrid Engine for Reasoning) solves these limitations by implementing a production-first agentic architecture. 
+### Dimension 2: Architectural & Systemic Failure (Static Pipelines)
+At the flow and state-routing level, static, linear pipelines are unable to adapt to complex or ambiguous inputs:
+* **The "Lost in the Middle" Phenomenon:** Standard pipelines retrieve a high volume of candidate chunks ($K \ge 10$) to improve search recall. However, LLM attention mechanisms struggle to process large contexts. When key details are placed in the middle of a long context block, the LLM often overlooks them, focusing only on the beginning and end of the text.
+* **Lack of Query Expansion and Refinement:** Users often write short, conversational queries (e.g., *"How much did we make?"*). Raw vector searches against these queries perform poorly because they lack the specific financial terminology (e.g., *"net income"*, *"gross profit"*, *"Q4 revenue"*) present in the source documents.
+* **No Corrective Loopback:** If a vector search retrieves irrelevant or noise-heavy passages, a linear pipeline has no way to evaluate the retrieval quality. It passes the irrelevant chunks directly to the generator, forcing the model to produce an answer from poor context.
+* **Hallucination Vectors:** Generative LLMs are trained to be helpful and conversational. If the retrieved context does not contain the answer, the LLM will draw from its pre-training data or hallucinate facts to fill the gap, presenting false information as document citations.
 
-A.R.C.H.E.R. uses a **Dual-Mode execution engine** (Quick Flash vs. Reasoning Pro), backed by a custom **multi-agent LangGraph workflow**. It replaces naive retrieval with **hybrid search** (combining dense vector search with sparse keyword-level SPLADE vectors) and adds a **two-stage agentic loop** (loopback query rewriting for irrelevant documents and regenerative hallucination checking).
+### Dimension 3: Business, UX & Operational Failure (Production Realities)
+At the business execution and runtime optimization level:
+* **Loss of Citations & Document Integrity:** Business users need to verify answers against source documents. If a RAG system cannot trace a generated statement back to an exact page number, users lose trust in the tool.
+* **API Rate-Limiting & Chained Latency:** Real-world agentic pipelines require multiple LLM calls (rewriting, relevance checking, generation, fact-checking). Running these calls sequentially can trigger API rate limits (HTTP 429) and introduce latency (often exceeding 15 seconds), making the application slow and expensive to run.
+* **Single-Point vector DB Failures:** Relying on a hosted cloud vector database adds external network latency and introduces a single point of failure. If the database goes offline, the entire QA service is disrupted.
 
 ---
 
-## 2. Dual-Mode Cognitive Strategies (Flash Mode ⚡ vs. Pro Mode 🧠)
+## 2. The Engineered Solution (The A.R.C.H.E.R. Framework)
 
-To balance execution speed and reasoning depth, A.R.C.H.E.R. provides two execution modes:
+To address these challenges, A.R.C.H.E.R. implements a production-grade cognitive engine:
+
+* **Page-Bounded Semantic Parsing:** Replaces character-based chunking with semantic sentence splitting bounded by PDF pages. This keeps sentences intact and ensures 100% accurate page-number mapping.
+* **Dense-Sparse Hybrid Retrieval:** Combines the semantic coverage of dense vectors (`BAAI/bge-small-en-v1.5`) with the keyword matching of sparse vectors (`SPLADE`).
+* **Corrective Multi-Agent Routing:** Uses LangGraph to implement dynamic loopbacks. If retrieved documents fail relevance checks, the query is rewritten and searched again.
+* **Fact-Verification Guards:** The system evaluates generated responses against source contexts to catch and regenerate hallucinated answers.
+* **High-Resilience Key Pooling:** Combines TCP Keep-Alive connection pools with round-robin key rotation to handle rate limits and reduce latency.
+
+---
+
+## 3. Dual-Mode Cognitive Strategies (Flash Mode ⚡ vs. Pro Mode 🧠)
+
+A.R.C.H.E.R. provides two execution modes to balance speed and reasoning depth:
 
 | Metric / Feature | Flash Mode ⚡ | Pro Mode 🧠 |
 | :--- | :--- | :--- |
@@ -65,7 +87,7 @@ To balance execution speed and reasoning depth, A.R.C.H.E.R. provides two execut
 
 ---
 
-## 3. Multi-Agent Core & LangGraph Architecture
+## 4. Multi-Agent Core & LangGraph Architecture
 
 ### LangGraph Workflow Diagram
 Below is the execution graph powered by LangGraph, showing how states flow between agents depending on the active mode:
@@ -96,7 +118,7 @@ graph TD
 
 ### Agent Specifications
 
-A.R.C.H.E.R. splits reasoning into five specialized agents configured in [app/agents/nodes.py](file:///c:/Users/B.PAVANKALYAN%20REDDY/Desktop/Rag%20project2/ARCHER-2-DUAL-MODE/app/agents/nodes.py):
+A.R.C.H.E.R. splits reasoning into five specialized agents configured in [app/agents/nodes.py](file:///c:/Users/B.PAVANKALYAN%20REDDY/Desktop/Rag project2/ARCHER-2-DUAL-MODE/app/agents/nodes.py):
 
 1. **Query Rewriter Agent (`rewrite_query`):**
    - **Mode Context:** Bypassed in Flash Mode.
@@ -120,7 +142,7 @@ A.R.C.H.E.R. splits reasoning into five specialized agents configured in [app/ag
 
 ---
 
-## 4. Depth Breakdown: The End-to-End RAG Pipeline
+## 5. Depth Breakdown: The End-to-End RAG Pipeline
 
 A.R.C.H.E.R. processes documents and user queries through five structured stages:
 
@@ -214,7 +236,7 @@ To reduce latency, A.R.C.H.E.R. implements two performance optimizations:
 
 ---
 
-## 5. API Key Configuration, Key Pool Rotation & Latency Profiles
+## 6. API Key Configuration, Key Pool Rotation & Latency Profiles
 
 ### The Key Rotation Strategy
 Because agentic workflows make multiple LLM calls per query, rate limits (TPM/RPM) are a common bottleneck. A.R.C.H.E.R. uses a round-robin key pool manager (`ResilientGroqLLM` in [app/services/llm.py](file:///c:/Users/B.PAVANKALYAN%20REDDY/Desktop/Rag%20project2/ARCHER-2-DUAL-MODE/app/services/llm.py)):
@@ -240,7 +262,7 @@ Stream Answer
 
 ---
 
-## 6. Trade-offs, Benefits & Disadvantages
+## 7. Trade-offs, Benefits & Disadvantages
 
 ### Benefits
 - **Fact-Checked Accuracy:** The combination of relevance grading and fact-checking helps ensure responses are grounded in the source text.
@@ -255,7 +277,7 @@ Stream Answer
 
 ---
 
-## 7. Project Directory & File Structure
+## 8. Project Directory & File Structure
 
 ```
 ARCHER-2-DUAL-MODE/
@@ -297,7 +319,7 @@ ARCHER-2-DUAL-MODE/
 
 ---
 
-## 8. API Reference
+## 9. API Reference
 
 ### `POST /upload`
 Uploads a PDF file. Ingestion and indexing run as a background task.
@@ -348,7 +370,7 @@ Runs a query through the RAG pipeline.
 
 ---
 
-## 9. Setup & Installation Guide
+## 10. Setup & Installation Guide
 
 ### Prerequisites
 - **Python 3.9+**

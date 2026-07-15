@@ -16,18 +16,25 @@ export default function DocumentsPage() {
   const [deletingDocId, setDeletingDocId] = useState(null);
   const fileInputRef = useRef();
 
-  const handleFile = useCallback(async (file) => {
-    if (!file || !file.name.endsWith('.pdf')) return alert('Only PDF files allowed.');
+  const handleFiles = useCallback(async (files) => {
+    if (!files || files.length === 0) return;
     setUploading(true);
-    try {
-      const res = await api.uploadDocument(file);
-      const doc = { doc_id: res.doc_id, filename: file.name, status: 'processing', chunk_count: null };
-      addDocument(doc);
-    } catch (e) {
-      alert('Upload failed: ' + e.message);
-    } finally {
-      setUploading(false);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (ext !== 'pdf' && ext !== 'docx' && ext !== 'doc') {
+        alert(`File "${file.name}" is not supported. Only PDF and Word (.docx) documents are allowed.`);
+        continue;
+      }
+      try {
+        const res = await api.uploadDocument(file);
+        const doc = { doc_id: res.doc_id, filename: file.name, status: 'processing', chunk_count: null };
+        addDocument(doc);
+      } catch (e) {
+        alert(`Upload failed for "${file.name}": ` + e.message);
+      }
     }
+    setUploading(false);
   }, [addDocument]);
 
   const handleDelete = async (e, docId) => {
@@ -50,7 +57,7 @@ export default function DocumentsPage() {
       <header className="mb-10">
         <h1 className="text-[28px] font-display font-semibold text-[#111827] dark:text-white mb-2 tracking-tight">Dataset Intelligence</h1>
         <p className="text-[15px] text-[#6B7280] dark:text-zinc-400 max-w-2xl leading-relaxed">
-          Ingest unstructured PDF documents into the semantic vector space for agentic retrieval.
+          Ingest unstructured PDF and Word documents into the semantic vector space for agentic retrieval.
         </p>
       </header>
 
@@ -61,14 +68,14 @@ export default function DocumentsPage() {
         onClick={() => !uploading && fileInputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
-        onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFile(e.dataTransfer.files[0]); }}
+        onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFiles(e.dataTransfer.files); }}
         className={cn(
           "relative mb-10 rounded-2xl border-2 border-dashed transition-all duration-300 cursor-pointer bg-white dark:bg-zinc-900/30 shadow-sm",
           isDragging ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 shadow-md" : "border-gray-300 dark:border-zinc-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/30 dark:hover:bg-blue-950/10",
           uploading && "opacity-60 cursor-not-allowed pointer-events-none"
         )}
       >
-        <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
+        <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
         
         <div className="px-8 py-16 flex flex-col items-center justify-center text-center">
           <div className={cn(
@@ -77,8 +84,8 @@ export default function DocumentsPage() {
           )}>
             <UploadCloud className="w-10 h-10" />
           </div>
-          <h3 className="text-[18px] font-semibold text-[#111827] dark:text-white mb-2">Click or drag document to upload</h3>
-          <p className="text-[14px] text-gray-500 dark:text-zinc-400 font-medium">Maximum file size 50MB. PDF format only.</p>
+          <h3 className="text-[18px] font-semibold text-[#111827] dark:text-white mb-2">Click or drag documents to upload</h3>
+          <p className="text-[14px] text-gray-500 dark:text-zinc-400 font-medium">Maximum file size 1GB. PDF & Word formats only.</p>
           
           {uploading && (
             <div className="mt-8 flex items-center gap-3 text-sm font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-5 py-2.5 rounded-xl border border-blue-100 dark:border-blue-900/50 shadow-sm">

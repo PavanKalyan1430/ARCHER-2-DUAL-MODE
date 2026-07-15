@@ -16,4 +16,5 @@ class AgentState(TypedDict):
     attempt_count: int
     doc_id: Optional[str]
     search_mode: Optional[str]
+    ragas_metrics: Optional[dict]
 

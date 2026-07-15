@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
+from typing import Optional
 
 class Settings(BaseSettings):
     """
@@ -25,6 +26,23 @@ class Settings(BaseSettings):
     # Vector Database Configuration
     # ==========================================
     QDRANT_URL: str = Field(..., description="Qdrant connection string")
+
+    # ==========================================
+    # Redis Cache Configuration
+    # ==========================================
+    REDIS_URL: str = Field(default="redis://localhost:6379/0", description="Redis connection URL")
+
+    # ==========================================
+    # Neo4j Graph Database Configuration
+    # ==========================================
+    NEO4J_URI: str = Field(default="bolt://localhost:7687", description="Neo4j connection URI")
+    NEO4J_USERNAME: str = Field(default="neo4j", description="Neo4j username")
+    NEO4J_PASSWORD: str = Field(default="archer_graph_pass", description="Neo4j password")
+
+    # ==========================================
+    # Tavily Search API Configuration
+    # ==========================================
+    TAVILY_API_KEY: Optional[str] = Field(default=None, description="Tavily Web Search Key")
 
     # This tells Python to look for the .env file in the root folder
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

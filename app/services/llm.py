@@ -4,6 +4,7 @@ from llama_index.core import Settings as LlamaIndexSettings
 from app.core.config import settings
 import time
 import logging
+import threading
 
 logger = logging.getLogger("A.R.C.H.E.R.LLM")
 
@@ -43,18 +44,22 @@ class ResilientGroqLLM:
         
         # Fallback if no keys in pool
         if not self.clients:
-            logger.warning(f"No keys found in pool for model {model}. Using settings.GROQ_API_KEY as fallback.")
-            self.clients.append(_build_groq(settings.GROQ_API_KEY, self.model, self.temperature))
+            import os
+            fallback_key = os.environ.get("GROQ_API_KEY") or (GROQ_KEYS[0] if GROQ_KEYS else "")
+            logger.warning(f"No keys found in pool for model {model}. Using fallback key.")
+            self.clients.append(_build_groq(fallback_key, self.model, self.temperature))
             
         self.current_index = 0
+        self.lock = threading.Lock()
 
     def complete(self, prompt: str) -> object:
         num_keys = len(self.clients)
         # Try each pre-instantiated client. We allow 2 full cycles.
         for attempt in range(num_keys * 2): 
-            client = self.clients[self.current_index]
-            # Rotate key index for the next call
-            self.current_index = (self.current_index + 1) % num_keys
+            with self.lock:
+                client = self.clients[self.current_index]
+                # Rotate key index for the next call
+                self.current_index = (self.current_index + 1) % num_keys
             try:
                 logger.info(f"LLM: Calling pre-instantiated Groq ({self.model}) client...")
                 return client.complete(prompt)

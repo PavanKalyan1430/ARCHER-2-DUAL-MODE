@@ -21,7 +21,7 @@ graph TD
     
     %% Pro Mode Path
     Rewriter -- Pro Mode --> ProRewrite[LLM Query Rewriter<br/>Llama-3.1-8B]
-    ProRewrite --> ProRetrieval[Deep Retrieval<br/>top_k=8]
+    ProRewrite --> ProRetrieval[Deep Retrieval<br/>Qdrant top_k=8 + Neo4j Graph RAG]
     ProRetrieval --> ProGrader{LLM Grader Node}
     
     ProGrader -- Relevant --> SmartGen
@@ -37,17 +37,17 @@ graph TD
   * **Size**: 450 tokens (~300–350 words) to perfectly fit the embedding model’s context window and completely eliminate token truncation.
   * **Overlap**: 65 tokens (~50 words) to preserve semantic contexts at the chunk boundaries.
   * **100% Guaranteed Metadata**: Isolating parsing page-by-page allows us to map the precise page number directly to the chunk schema. This completely eliminates retrieval page-attribution mismatches.
-* **Storage (`Qdrant`)**: Chunks are stored in a local Qdrant collection using native hybrid search (dense embeddings + sparse SPLADE tokens).
+* **Storage (`Qdrant` & `Neo4j`)**: Chunks are stored in a local Qdrant collection using native hybrid search (dense embeddings + sparse SPLADE tokens). In addition, chunks are uploaded as `Chunk` nodes in a Neo4j Graph Database. The system extracts entities and relationships page-by-page using the fast LLM and populates the graph dynamically with `Entity` nodes, `RELATED_TO` relationships, and `MENTIONED_IN` references mapping entities back to source `Chunk` nodes.
 * **Resilience Fallback**: If the Qdrant Docker container is offline, the backend dynamically falls back to an on-disk embedded Qdrant instance in `temp_uploads/local_qdrant/` with zero interruption to usability.
 
 ### 2. Intelligent Strategy Engine
 The execution graph is powered by LangGraph (`app/agents/workflow.py`). Each step checks the request strategy:
 * **Flash Mode ⚡** (Ultra-fast, direct grounded answers):
   - Bypasses query rewriting, grading, and post-validation checks.
-  - Queries Qdrant with `top_k=3` dense+sparse chunks.
+  - Queries Qdrant with `top_k=3` dense+sparse chunks (vector-only).
   - Latency target: **sub-1.5 seconds**.
-* **Pro Mode 🧠** (Deep reasoning + multi-agent validation):
-  - Performs LLM-based query rewrite, `top_k=8` hybrid retrieval, relevance grading (with loopback repair), and post-generation hallucination validation.
+* **Pro Mode 🧠** (Deep reasoning + multi-agent validation + Graph RAG):
+  - Performs LLM-based query rewrite, executes dual retrieval (hybrid vector search top_k=8 + Neo4j Graph RAG), filters and extracts related semantic entity links/facts, performs relevance grading (with loopback repair), and post-generation hallucination validation.
   - Latency target: **5-8 seconds**.
 
 ---

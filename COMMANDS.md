@@ -85,8 +85,17 @@ Useful scripts to test the agentic pipeline without the frontend.
 ---
 
 ## 🚀 Quick Start (Running the full app)
-If you are opening VS Code fresh, you need 3 terminal tabs to run the project:
 
-1. **Terminal 1 (Docker):** `docker-compose up -d`
-2. **Terminal 2 (Backend):** `.\venv\Scripts\uvicorn app.main:app --reload --reload-dir app`
-3. **Terminal 3 (Frontend):** `npm run dev --prefix frontend`
+We have created a convenient single-click startup script [`start.bat`](file:///c:/Users/B.PAVANKALYAN%20REDDY/Desktop/Rag%20project2/ARCHER-2-DUAL-MODE/start.bat) in the root of the workspace.
+
+**To run everything at once:**
+Simply double-click [`start.bat`](file:///c:/Users/B.PAVANKALYAN%20REDDY/Desktop/Rag%20project2/ARCHER-2-DUAL-MODE/start.bat) or run it from your terminal:
+```powershell
+.\start.bat
+```
+
+This single command will:
+1. Start the Docker databases (Qdrant, Neo4j, Redis, Postgres) in the background.
+2. Spin up the FastAPI server in a new window.
+3. Spin up the Vite dev server in a new window.
+4. Provide you with the links to access the apps directly.

@@ -15,7 +15,7 @@ function cn(...inputs) { return twMerge(clsx(inputs)); }
 
 export default function ChatPage() {
   const { 
-    messages, addMessage, activeDocId, documents, sessionId, 
+    messages, addMessage, activeDocId, setActiveDocId, documents, sessionId, 
     updateAnalytics, analytics, strategyMode, setStrategyMode 
   } = useStore();
   
@@ -25,8 +25,9 @@ export default function ChatPage() {
   const bottomRef = useRef();
   const inputRef = useRef();
 
+  const readyDocs = documents.filter((d) => d.status === 'ready');
   const activeDoc = documents.find((d) => d.doc_id === activeDocId);
-  const canQuery = activeDoc?.status === 'ready';
+  const canQuery = activeDocId === null ? readyDocs.length > 0 : activeDoc?.status === 'ready';
 
   useEffect(() => { 
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); 
@@ -100,12 +101,36 @@ export default function ChatPage() {
     <div className="h-full w-full font-sans flex overflow-hidden bg-transparent">
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col h-full relative min-w-0">
+          {/* Dataset selector top bar */}
+          <div className="h-16 border-b border-gray-150 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/20 backdrop-blur-md px-6 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Active Context:</span>
+              <div className="relative">
+                <select
+                  value={activeDocId || 'all'}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setActiveDocId(val === 'all' ? null : val);
+                  }}
+                  className="appearance-none bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-850 text-[12px] font-semibold text-gray-800 dark:text-zinc-200 pl-4 pr-10 py-1.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer select-none"
+                >
+                  <option value="all">All Indexed Datasets (Cross-Doc RAG)</option>
+                  {documents.filter(d => d.status === 'ready').map(doc => (
+                    <option key={doc.doc_id} value={doc.doc_id}>
+                      {doc.filename}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-gray-555 dark:text-zinc-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+          </div>
           
           <div className="flex-1 overflow-y-auto px-6 py-10 flex flex-col custom-scrollbar pb-40">
             <AnimatePresence>
               {messages.length === 0 ? (
                 <motion.div 
-                  initial={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
+                   initial={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
                   animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
                   transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                   className="flex flex-col items-center justify-center h-full max-w-[640px] mx-auto w-full text-center"
@@ -118,12 +143,12 @@ export default function ChatPage() {
                   </div>
                   
                   <h2 className="text-[32px] font-display font-semibold text-[#09090B] dark:text-zinc-100 mb-4 tracking-tighter leading-tight">
-                    {!activeDoc ? 'Connect a Dataset' : !canQuery ? 'Embedding Dataset...' : 'How can I help you today?'}
+                    {readyDocs.length === 0 ? 'Connect a Dataset' : !canQuery ? 'Embedding Dataset...' : 'How can I help you today?'}
                   </h2>
                   <p className="text-[16px] text-[#71717A] dark:text-zinc-400 leading-relaxed mb-12 max-w-[480px]">
-                    {!activeDoc ? 'Select or upload a document from the Datasets panel to bind a knowledge graph to this terminal.' :
+                    {readyDocs.length === 0 ? 'Select or upload a document from the Datasets panel to bind a knowledge graph to this terminal.' :
                      !canQuery ? 'The LangGraph orchestration engine is currently chunking and indexing your vectors.' :
-                     'The autonomous intelligence engine is ready. Select your reasoning strategy and ask a question.'}
+                     `The autonomous intelligence engine is ready. Active context: ${activeDoc ? activeDoc.filename : 'All Indexed Datasets'}. Ask a question.`}
                   </p>
 
                   {canQuery && (

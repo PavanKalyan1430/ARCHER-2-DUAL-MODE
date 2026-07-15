@@ -13,7 +13,7 @@ class QdrantManager:
     def __init__(self, collection_name: str = "archer_documents"):
         self.collection_name = collection_name
         try:
-            self.client = QdrantClient(url=settings.QDRANT_URL, timeout=3.0)
+            self.client = QdrantClient(url=settings.QDRANT_URL, timeout=60.0)
             # Test connection to ensure server is actually reachable
             self.client.get_collections()
             logger.info("🔌 Connected to Qdrant Docker service successfully.")
@@ -58,11 +58,15 @@ class QdrantManager:
                 pass
 
             if current_size != DENSE_VECTOR_SIZE or not has_sparse:
-                logger.warning(
-                    f"Collection config mismatch (size: {current_size}, sparse: {has_sparse}). Recreating..."
+                error_msg = (
+                    f"Collection configuration mismatch detected for '{self.collection_name}'. "
+                    f"Expected vector size: {DENSE_VECTOR_SIZE}, got: {current_size}. "
+                    f"Expected sparse vectors enabled: True, got: {has_sparse}. "
+                    "To prevent catastrophic data loss, A.R.C.H.E.R will not silently delete this collection. "
+                    "Please manually delete or migrate the collection in Qdrant before restarting."
                 )
-                self.client.delete_collection(self.collection_name)
-                existing = None
+                logger.critical(error_msg)
+                raise ValueError(error_msg)
 
         if not existing:
             self.client.create_collection(
